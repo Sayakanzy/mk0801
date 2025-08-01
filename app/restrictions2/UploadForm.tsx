@@ -37,12 +37,12 @@ const UploadForm2 = () => {
     if (!file) return;
 
     Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as HealthCheckRow[];
-        let added = 0;
-        let skipped = 0;
+  header: true,
+  skipEmptyLines: true,
+  complete: async (results: ParseResult<Record<string, string>>) => {
+    const rows = results.data;
+    let added = 0;
+    let skipped = 0;
 
         for (const rawRow of rows) {
           const row: HealthCheckRow = {};
