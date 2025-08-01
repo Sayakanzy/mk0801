@@ -1,7 +1,3 @@
-
-2. **以下の内容をまるごと貼り付けて保存**：
-
-```json
 {
   "extends": "next/core-web-vitals",
   "rules": {
