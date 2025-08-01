@@ -1,94 +1,92 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { db } from '../../firebase';
+import React from "react";
+import Papa, { ParseResult } from "papaparse";
+import { db } from '@/firebase';
 import {
-  doc,
-  setDoc
-} from 'firebase/firestore';
-import Papa from 'papaparse';
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 
-// 各CSV行の型を定義
-type HealthCheckRow = {
-  [key: string]: string | undefined;
+export type HealthCheckRow = {
+  氏名: string;
+  社員番号: string;
+  所属: string;
+  年度: string;
+  性別: string;
+  年齢: string;
+  BMI: string;
+  血圧_上: string;
+  血圧_下: string;
+  中性脂肪: string;
+  LDLコレステロール: string;
+  HbA1c: string;
+  AST: string;
+  ALT: string;
+  γGTP: string;
+  受診日: string;
+  就業制限: string;
 };
 
 const UploadForm2 = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [message, setMessage] = useState('');
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) {
-      setFile(e.target.files[0]);
-    }
-  };
-
   const normalize = (label: string) => {
     return label
-      .trim()
-      .replace(/　/g, ' ') // 全角スペースを半角に
-      .replace(/\s*\(.*?\)/g, '') // ()内を削除
-      .replace(/[（）]/g, '') // 全角の()削除
-      .replace(/[\s_]/g, '')
+      .replace(/\r?\n/g, "")
+      .replace(/（.*?）/g, "") // 全角の()削除
+      .replace(/[\s_]/g, "")
       .toLowerCase();
   };
 
   const handleUpload = () => {
+    const fileInput = document.getElementById("csvFile") as HTMLInputElement;
+    const file = fileInput?.files?.[0];
     if (!file) return;
 
     Papa.parse(file, {
-  header: true,
-  skipEmptyLines: true,
-  complete: async (results: ParseResult<Record<string, string>>) => {
-    const rows = results.data;
-    let added = 0;
-    let skipped = 0;
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results: ParseResult<HealthCheckRow>) => {
+        const rows = results.data;
+        let added = 0;
+        let skipped = 0;
 
         for (const rawRow of rows) {
-          const row: HealthCheckRow = {};
-          for (const key in rawRow) {
-            const normKey = normalize(key);
-            row[normKey] = rawRow[key]?.toString().trim();
-          }
+          const employeeId = rawRow["社員番号"];
+          const year = rawRow["年度"];
+          if (!employeeId || !year) continue;
 
-          const id = row['社員番号'] || row['id'];
-          const checkupDate = row['受診日'] || row['checkupdate'] || row['年度'] || row['year'];
-
-          if (!id || !checkupDate) {
-            console.warn('スキップ: IDまたは受診日が空欄', { id, checkupDate, row });
+          const q = query(
+            collection(db, "restrictions_checkups_2"),
+            where("社員番号", "==", employeeId),
+            where("年度", "==", year)
+          );
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
             skipped++;
             continue;
           }
 
-          const docId = `${id}_${checkupDate}`;
-          const ref = doc(db, 'restrictions_checkups_2', docId);
-
-          try {
-            await setDoc(ref, row, { merge: true });
-            console.log('✅ 登録:', docId, row);
-            added++;
-          } catch (error) {
-            console.error('❌ Firestore登録エラー:', error, row);
-            skipped++;
-          }
+          await addDoc(collection(db, "restrictions_checkups_2"), rawRow);
+          added++;
         }
 
-        setMessage(`✅ 登録完了: ${added} 件追加、${skipped} 件スキップ`);
+        alert(`✅ 登録完了: ${added}件追加、${skipped}件スキップ`);
       },
     });
   };
 
   return (
-    <div className="p-4 border rounded shadow-md bg-white">
-      <h2 className="text-lg font-bold mb-2">CSVアップロード（リスト2用）</h2>
-      <input type="file" accept=".csv" onChange={handleFileChange} />
+    <div className="p-4">
+      <input type="file" id="csvFile" accept=".csv" className="mb-2" />
       <button
         onClick={handleUpload}
-        className="ml-2 px-4 py-2 bg-blue-500 text-white rounded"
+        className="px-4 py-2 bg-blue-500 text-white rounded"
       >
         アップロード
       </button>
-      {message && <p className="mt-2 text-green-600">{message}</p>}
     </div>
   );
 };
