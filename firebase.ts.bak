@@ -1,0 +1,15 @@
+// firebase.ts
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyBs-tODMo5GZ3gci-gFZ5Z0bkH7s3w3UKM',
+  authDomain: 'm-k2-951e7.firebaseapp.com',
+  projectId: 'm-k2-951e7',
+  storageBucket: 'm-k2-951e7.appspot.com',
+  messagingSenderId: '422331222573',
+  appId: '1:422331222573:web:2371fa0f9e900bbd50c6a4',
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
